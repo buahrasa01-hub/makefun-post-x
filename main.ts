@@ -24,4 +24,13 @@ try {
   process.exit(1);
 }
 
-console.log(`Copied POST.json to ${dest}`);
+// Verify the copy landed: the destination must exist and match the source.
+import { statSync } from 'node:fs';
+const srcSize = statSync(src).size;
+const destSize = statSync(dest).size;
+if (srcSize !== destSize) {
+  console.error(`POST.json copy size mismatch: ${srcSize} vs ${destSize}`);
+  process.exit(1);
+}
+
+console.log(`Copied POST.json to ${dest} (${destSize} bytes)`);
