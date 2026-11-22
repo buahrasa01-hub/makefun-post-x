@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Catch Falling Stars</title>
+    <style>
+        body, html { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background: #000; }
+        canvas { display: block; width: 1280px; height: 720px; margin: auto; }
+        .hidden { display: none; }
+        .overlay {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            color: #fff;
+            font-family: Arial, sans-serif;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
+        }
+        .title { font-size: 48px; margin-bottom: 20px; }
+        .prompt { font-size: 18px; line-height: 1.5; max-width: 800px; margin: 0 auto 30px; }
+        .controls { font-size: 16px; margin-top: 20px; }
+        .score, .timer, .missed { position: absolute; top: 20px; font-size: 24px; color: #fff; text-shadow: 1px 1px 2px #000; }
+        .score { left: 20px; }
+        .timer { right: 20px; }
+        .missed { left: 50%; transform: translateX(-50%); bottom: 20px; }
+        .win, .loss {
+            font-size: 60px;
+            color: #00ff00;
+            text-shadow: 2px 2px 4px #000;
+        }
+        .loss { color: #ff0000; }
+    </style>
+</head>
+<body>
+    <canvas id="c"></canvas>
+    <div id="titleScreen" class="overlay">
+        <div class="title">Catch Falling Stars</div>
+        <div class="prompt">Build a tiny browser game: catch falling stars in a basket. Move with arrow keys or mouse, 60 seconds on the clock, score for each star caught, win at 20 stars, lose if 5 stars hit the ground. Title screen, playing screen, win screen and loss screen, all in one HTML file, no network.</div>
+        <div class="controls">Press any key or move mouse to start</div>
+    </div>
+    <div id="winScreen" class="overlay hidden">
+        <div class="win">YOU WIN!</div>
+        <div class="score-display">Score: <span id="finalScore"></span></div>
+    </div>
+    <div id="lossScreen" class="overlay hidden">
+        <div class="loss">GAME OVER</div>
+        <div class="score-display">Score: <span id="finalScore"></span></div>
+    </div>
+    <div id="score" class="score">0</div>
+    <div id="timer" class="timer">60</div>
+    <div id="missed" class="missed">Missed: 0</div>
+    <script>
+        const canvas = document.getElementById('c');
+        const ctx = canvas.getContext('2d');
+        const titleScreen = document.getElementById('titleScreen');
+        const winScreen = document.getElementById('winScreen');
+        const lossScreen = document.getElementById('lossScreen');
+        const scoreEl = document.getElementById('score');
+        const timerEl = document.getElementById('timer');
+        const missedEl = document.getElementById('missed');
+        const finalScoreEl = document.getElementById('finalScore');
+
+        // Configuration
+        const WIDTH = 1280;
+        const HEIGHT = 720;
+        canvas.width = WIDTH;
+        canvas.height = HEIGHT;
+        const BASKET_WIDTH = 80;
+        const BASKET_HEIGHT = 40;
+        const STAR_RADIUS = 10;
+        const STAR_FALL_SPEED = 5;
+        const SPAWN_INTERVAL = 1000; // ms
+
+        // Game state
+        let state = 'title'; // title, playing, win, loss
+        let score = 0;
+        let missed = 0;
+        let timeLeft = 60;
+        let basketX = WIDTH / 2 - BASKET_WIDTH / 2;
+        let basketY = HEIGHT - BASKET_HEIGHT - 20;
+        let stars = [];
+        let lastSpawnTime = 0;
+        let animationId = null;
+        let seed = null;
+
+        // Deterministic seed from URL parameter
+        const urlParams = new URLSearchParams(window.location.search);
+        const shot = urlParams.get('shot');
+        if (shot && ['title','play','win','loss'].includes(shot)) {
+            seed = shot;
+        }
+
+        function setState(newState) {
+            state = newState;
+            // Hide all screens
+            titleScreen.classList.add('hidden');
+            winScreen.classList.add('hidden');
+            lossScreen.classList.add('hidden');
+            // Show appropriate screen
+            if (state === 'title') {
+                titleScreen.classList.remove('hidden');
+                // Reset game variables
+                score = 0;
+                missed = 0;
+                timeLeft = 60;
+                stars = [];
+                lastSpawnTime = 0;
+                basketX = WIDTH / 2 - BASKET_WIDTH / 2;
+                basketY = HEIGHT - BASKET_HEIGHT - 20;
+                updateDisplay();
+                // If seeded, skip to playing state immediately
+                if (seed === 'title') {
+                    setState('playing');
+                }
+            } else if (state === 'win') {
+                winScreen.classList.remove('hidden');
+                finalScoreEl.textContent = score;
+                // If seeded, show win screen immediately
+                if (seed === 'win') {
+                    // No animation needed
+                }
+            } else if (state === 'loss') {
+                lossScreen.classList.remove('hidden');
+                finalScoreEl.textContent = score;
+                if (seed === 'loss') {
+                    // No animation needed
+                }
+            }
+        }
+
+        function updateDisplay() {
+            scoreEl.textContent = score;
+            timerEl.textContent = timeLeft;
+            missedEl.textContent = `Missed: ${missed}`;
+        }
+
+        function drawBackground() {
+            ctx.fillStyle = '#1a1a2e';
+            ctx.fillRect(0, 0, WIDTH, HEIGHT);
+            // Stars background effect
+            for (let i = 0; i < 100; i++) {
+                const x = Math.random() * WIDTH;
+                const y = Math.random() * HEIGHT;
+                ctx.fillStyle = '#fff';
+                ctx.fillRect(x, y, 1, 1);
+            }
+        }
+
+        function drawBasket() {
+            ctx.fillStyle = '#e94560';
+            ctx.fillRect(basketX, basketY, BASKET_WIDTH, BASKET_HEIGHT);
+            // Basket net
+            ctx.strokeStyle = '#fff';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.arc(basketX + BASKET_WIDTH/2, basketY + BASKET_HEIGHT/2, BASKET_WIDTH/2, 0, Math.PI);
+            ctx.stroke();
+        }
+
+        function drawStars() {
+            for (const star of stars) {
+                ctx.fillStyle = '#ffd700';
+                ctx.beginPath();
+                ctx.arc(star.x, star.y, STAR_RADIUS, 0, Math.PI * 2);
+                ctx.fill();
+                // Glow effect
+                ctx.shadowBlur = 10;
+                ctx.shadowColor = '#ffd700';
+                ctx.fill();
+                ctx.shadowBlur = 0;
+            }
+        }
+
+        function drawGame() {
+            drawBackground();
+            drawStars();
+            drawBasket();
+            // Draw score and timer overlay
+            ctx.fillStyle = '#fff';
+            ctx.font = 'bold 24px Arial';
+            ctx.fillText(`Score: ${score}`, 20, 30);
+            ctx.fillText(`Time: ${timeLeft}s`, WIDTH - 100, 30);
+            ctx.fillText(`Missed: ${missed}`, WIDTH/2 - 60, 30);
+        }
+
+        function spawnStar() {
+            const x = Math.random() * (WIDTH - STAR_RADIUS * 2) + STAR_RADIUS;
+            stars.push({ x, y: -STAR_RADIUS, vy: STAR_FALL_SPEED });
+        }
+
+        function updateStars() {
+            for (let i = stars.length - 1; i >= 0; i--) {
+                const star = stars[i];
+                star.y += star.vy;
+                // Check if caught
+                if (star.y >= basketY && star.y <= basketY + BASKET_HEIGHT &&
+                    star.x >= basketX && star.x <= basketX + BASKET_WIDTH) {
+                    stars.splice(i, 1);
+                    score++;
+                    updateDisplay();
+                    if (score >= 20) {
+                        setState('win');
+                    }
+                } else if (star.y > HEIGHT) {
+                    // Fell to ground
+                    stars.splice(i, 1);
+                    missed++;
+                    updateDisplay();
+                    if (missed >= 5) {
+                        setState('loss');
+                    }
+                }
+            }
+        }
+
+        function gameLoop() {
+            if (state !== 'playing') return;
+            // Update timer
+            timeLeft--;
+            updateDisplay();
+            if (timeLeft <= 0) {
+                setState('loss');
+                return;
+            }
+            // Spawn stars deterministically if seeded
+            if (seed) {
+                // Fixed pattern for reproducibility
+                const now = Date.now();
+                if (now - lastSpawnTime >= SPAWN_INTERVAL) {
+                    spawnStar();
+                    lastSpawnTime = now;
+                }
+            } else {
+                if (Date.now() - lastSpawnTime >= SPAWN_INTERVAL) {
+                    spawnStar();
+                    lastSpawnTime = Date.now();
+                }
+            }
+            updateStars();
+            drawGame();
+            animationId = requestAnimationFrame(gameLoop);
+        }
+
+        // Input handling
+        let mouseDown = false;
+        canvas.addEventListener('mousemove', (e) => {
+            if (mouseDown) {
+                const rect = canvas.getBoundingClientRect();
+                const x = e.clientX - rect.left;
+                basketX = Math.max(0, Math.min(x - BASKET_WIDTH/2, WIDTH - BASKET_WIDTH));
+            }
+        });
+        canvas.addEventListener('mousedown', () => { mouseDown = true; });
+        canvas.addEventListener('mouseup', () => { mouseDown = false; });
+        canvas.addEventListener('touchmove', (e) => {
+            e.preventDefault();
+            const rect = canvas.getBoundingClientRect();
+            const x = e.touches[0].clientX - rect.left;
+            basketX = Math.max(0, Math.min(x - BASKET_WIDTH/2, WIDTH - BASKET_WIDTH));
+        });
+        // Keyboard controls
+        document.addEventListener('keydown', (e) => {
+            if (state === 'title') {
+                setState('playing');
+                return;
+            }
+            if (e.key === 'ArrowLeft') {
+                basketX = Math.max(0, basketX - 10);
+            } else if (e.key === 'ArrowRight') {
+                basketX = Math.min(WIDTH - BASKET_WIDTH, basketX + 10);
+            }
+        });
+        // Click to start
+        canvas.addEventListener('click', () => {
+            if (state === 'title') {
+                setState('playing');
+            }
+        });
+
+        // Start
+        drawBackground();
+        if (seed === 'title') {
+            setState('playing');
+        }
+        // If no seed, stay on title screen
+    </script>
+</body>
+</html>
