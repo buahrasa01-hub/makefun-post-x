@@ -1,5 +1,7 @@
 // make.fun entry: copy POST.json to output directory
-// Uses MAKEFUN_BOT_DIR and MAKEFUN_OUTPUT_DIR env vars with fallbacks
+// Uses MAKEFUN_BOT_DIR and MAKEFUN_OUTPUT_DIR env vars with fallbacks.
+// The grader mounts the repository read-only at /bot and gives a writable
+// /output (MAKEFUN_OUTPUT_DIR), so this program never writes under the repo.
 
 import { copyFileSync, mkdirSync } from 'node:fs';
 import { join } from 'node:path';
@@ -8,10 +10,10 @@ import { join } from 'node:path';
 const BOT_DIR = process.env.MAKEFUN_BOT_DIR ?? '/bot';
 const OUTPUT_DIR = process.env.MAKEFUN_OUTPUT_DIR ?? '/output';
 
-// Ensure output directory exists
+// Ensure the output directory exists (already present in the grader)
 mkdirSync(OUTPUT_DIR, { recursive: true });
 
-// Copy POST.json from bot directory to output directory
+// Copy POST.json from the bot directory to the output directory
 const src = join(BOT_DIR, 'POST.json');
 const dest = join(OUTPUT_DIR, 'POST.json');
 
