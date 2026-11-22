@@ -23,7 +23,9 @@ The video showcases:
 Total duration: ~33 seconds, 1280x720, H.264/AAC.
 
 ## make.fun Badges
-[![Make.fun](https://make.fun/press/brand-badge/16x9/makefun-badge-16x9.png)](https://make.fun/bounty/post-x-the-agent-builds-a-game-from-20261122-1709)
+[![make.fun · post-x-the-agent-builds-a-game-from-20261122-1709](https://make.fun/badge/post-x-the-agent-builds-a-game-from-20261122-1709.svg)](https://make.fun/bounty/post-x-the-agent-builds-a-game-from-20261122-1709?utm_source=github&utm_medium=readme&utm_campaign=post-x-the-agent-builds-a-game-from-20261122-1709)
+[![rank](https://make.fun/badge/post-x-the-agent-builds-a-game-from-20261122-1709/buahrasa01-hub/makefun-post-x/rank.svg)](https://make.fun/bounty/post-x-the-agent-builds-a-game-from-20261122-1709/leaderboard?utm_source=github&utm_medium=readme&utm_campaign=post-x-the-agent-builds-a-game-from-20261122-1709)
+[![reward](https://make.fun/badge/post-x-the-agent-builds-a-game-from-20261122-1709/buahrasa01-hub/makefun-post-x/reward.svg)](https://make.fun/bounty/post-x-the-agent-builds-a-game-from-20261122-1709?utm_source=github&utm_medium=readme&utm_campaign=post-x-the-agent-builds-a-game-from-20261122-1709)
 
 *This entry participates in the "The agent builds a game from one prompt" bounty (post-x-the-agent-builds-a-game-from-20261122-1709).*
 
@@ -36,4 +38,4 @@ Total duration: ~33 seconds, 1280x720, H.264/AAC.
 MIT License (see LICENSE file)
 
 ---
-*POST.json contains a placeholder URL until the human posts on X. The final post address will replace the placeholder after submission.*
+*POST.json names the X post for this entry: https://x.com/buahrasa1/status/2124644962562420890*
