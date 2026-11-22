@@ -1,36 +1,40 @@
-// make.fun entry: copy POST.json to output directory
-// Uses MAKEFUN_BOT_DIR and MAKEFUN_OUTPUT_DIR env vars with fallbacks.
-// The grader mounts the repository read-only at /bot and gives a writable
-// /output (MAKEFUN_OUTPUT_DIR), so this program never writes under the repo.
+#!/usr/bin/env node
 
-import { copyFileSync, mkdirSync } from 'node:fs';
-import { join } from 'node:path';
+import { promises as fs } from 'fs';
+import { join } from 'path';
 
-// Default directories for the make.fun grader
-const BOT_DIR = process.env.MAKEFUN_BOT_DIR ?? '/bot';
-const OUTPUT_DIR = process.env.MAKEFUN_OUTPUT_DIR ?? '/output';
+// Get environment variables with defaults
+const botDir = process.env.MAKEFUN_BOT_DIR || '/bot';
+const outputDir = process.env.MAKEFUN_OUTPUT_DIR || '/output';
+const sourcePath = join(botDir, 'POST.json');
+const destPath = join(outputDir, 'POST.json');
 
-// Ensure the output directory exists (already present in the grader)
-mkdirSync(OUTPUT_DIR, { recursive: true });
+async function main() {
+  try {
+    // Ensure output directory exists
+    await fs.mkdir(outputDir, { recursive: true });
 
-// Copy POST.json from the bot directory to the output directory
-const src = join(BOT_DIR, 'POST.json');
-const dest = join(OUTPUT_DIR, 'POST.json');
+    // Read source file
+    const sourceData = await fs.readFile(sourcePath, 'utf8');
 
-try {
-  copyFileSync(src, dest);
-} catch (err) {
-  console.error(`Failed to copy POST.json from ${src} to ${dest}: ${err}`);
-  process.exit(1);
+    // Write destination file
+    await fs.writeFile(destPath, sourceData, 'utf8');
+
+    // Verify copy: read destination and compare
+    const destData = await fs.readFile(destPath, 'utf8');
+    const verificationOk = sourceData === destData;
+
+    if (verificationOk) {
+      console.log('Copy verification: SUCCESS - files match');
+      process.exit(0);
+    } else {
+      console.error('Copy verification: FAILED - files do not match');
+      process.exit(1);
+    }
+  } catch (err) {
+    console.error('Error:', err.message);
+    process.exit(1);
+  }
 }
 
-// Verify the copy landed: the destination must exist and match the source.
-import { statSync } from 'node:fs';
-const srcSize = statSync(src).size;
-const destSize = statSync(dest).size;
-if (srcSize !== destSize) {
-  console.error(`POST.json copy size mismatch: ${srcSize} vs ${destSize}`);
-  process.exit(1);
-}
-
-console.log(`Copied POST.json to ${dest} (${destSize} bytes)`);
+main();
